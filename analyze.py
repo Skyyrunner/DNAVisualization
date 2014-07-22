@@ -7,6 +7,15 @@ from hilbert import hilbert
 
 
 file = open(sys.argv[1], "r")
+try:
+    mode = sys.argv[2].lower()
+    possibleModes = ["lab", "lch"]
+    if not mode in possibleModes:
+        print "Specify color mode -- Lab or Lch?"
+        quit()
+except:
+    mode = "lab"
+    
 aligned = False
 outname = ""
 pixelsize = 50 # How many base pairs per pixel?
@@ -26,9 +35,9 @@ for line in file:
             outname = txts[0].strip()[1:]
             aligned = True
     else:
-        GC = AT = N = 0
         group += line.strip()
         if len(group) >= pixelsize:
+            GC = AT = N = 0
             working = group[:pixelsize] # Copy the base pairs to work on.
             group = group[pixelsize:] # Remove the worked-on pairs.
             for dna in working:
@@ -61,17 +70,28 @@ pixels = img.load()
 
 
 
-# Define the two colors to interpolate between in Lab.
-#ATColor = colors.LabColor(43, 67, 58) # red
-#GCColor = colors.LabColor(22, 57, -93) # blue
-ATColor = colors.LabColor(100, 127, 0) # pink
-GCColor = colors.LabColor(100, -128, 0) # blue
-black = colors.LabColor(0, 0, 0)
+# Define the two colors to interpolate between in Lab/Lch.
+if mode == "lab":
+    ATColor = colors.LabColor(100, 127, 0) # pink
+    GCColor = colors.LabColor(100, -128, 0) # blue
+    black = colors.LabColor(0, 0, 0)
+else:
+    ATColor = colors.LCHabColor(78, 100, 157) # green
+    GCColor = colors.LCHabColor(71, 100, 360) # pink
+    black = colors.LCHabColor(0, 0, 0)
+    
 def lerpLab(Color1, Color2, t): # t = [0,1].
     temp = colors.LabColor(0, 0, 0)
     temp.lab_l = Color1.lab_l * (1.0 - t) + Color2.lab_l * t
     temp.lab_a = Color1.lab_a * (1.0 - t) + Color2.lab_a * t
     temp.lab_b = Color1.lab_b * (1.0 - t) + Color2.lab_b * t
+    return temp
+    
+def lerpLch(Color1, Color2, t): # t = [0,1].
+    temp = colors.LCHabColor(0, 0, 0)
+    temp.lch_l = Color1.lch_l * (1.0 - t) + Color2.lch_l * t
+    temp.lch_c = Color1.lch_c * (1.0 - t) + Color2.lch_c * t
+    temp.lch_h = Color1.lch_h * (1.0 - t) + Color2.lch_h * t
     return temp
 
 # Get required Hilbert coordinates
@@ -83,12 +103,20 @@ exceptions = 0
 for d in xrange(len(ratios)):
     if d % 10000 == 0:
         print d,"/",len(ratios)
-    col = lerpLab(ATColor, GCColor, ratios[d][0])
+        
+    if mode == "lab":
+        col = lerpLab(ATColor, GCColor, ratios[d][0])
+    else:
+        col = lerpLch(ATColor, GCColor, ratios[d][0])
+
     if len(ratios[d]) > 1:
-        col = lerpLab(col, black, ratios[d][1])
-    # translate Lab to RGB colors
+        if mode == "lab":
+            col = lerpLab(col, black, ratios[d][1])
+        else:
+            col = lerpLch(col, black, ratios[d][1])
+    # translate Lab/Lch to RGB colors
     r,g,b = conversions.convert_color(col, colors.sRGBColor).get_value_tuple()      
-    # Some Lab colors can't be represented using RGB.
+    # Some Lab/Lch colors can't be represented using RGB.
     if r < 0.0:
         r = 0.0
     if g < 0.0:
