@@ -5,7 +5,6 @@
 from math import floor
 import Image
 import ImageDraw
-#import rpdb2; rpdb2.start_embedded_debugger('1234')
 
         # x/y start, v width    v height
 def hilbert(x0, y0, xi, xj, yi, yj, n, coords):
@@ -45,32 +44,47 @@ def showPoints(size):
         counter += 1
     img.save("output/test.png")
     
-def checkFunction(size): # check the xy2d function
-    def rot(n, x, y, rx, ry):
-        if ry == 0:
-            if rx == 1:
-                x = n-1 - x
-                y - n-1 - y
-        
-            return y,x
-        return x,y
-        
-    def xy2d(n, x, y):
-        n = 2**n # Function expects the total number of cells, not the length of a side.
-        x = int(x)
-        y = int(y)
-        rx = ry = s = d = 0
-        s = n/2
-        while s > 0:
-            rx = (x & s) > 0
-            ry = (y & s) > 0
-            rx = 1 if rx else 0
-            ry = 1 if ry else 0
-            d += s * s * ((3 * rx) ^ ry)
-            x,y = rot(s,x,y,rx,ry)
-            s /= 2
-        return d
-        
+def rot(n, x, y, rx, ry):
+    if ry == 0:
+        if rx == 1:
+            x = n-1 - x
+            y - n-1 - y
+    
+        return y,x
+    return x,y
+    
+def d2xy(n, d):
+    n = 2**n
+    rx = ry = s = t = d
+    x = y = 0
+    s = 1
+    while s < n:
+        rx = 1 & (t/2)
+        ry = 1 & (t ^ rx)
+        rot(s, x, y, rx, ry)
+        x += s * rx
+        y += s * ry
+        t /= 4
+        s *= 2
+    return x, y
+    
+def xy2d(n, x, y):
+    n = 2**n # Function expects the total number of cells, not the length of a side.
+    x = int(x)
+    y = int(y)
+    rx = ry = s = d = 0
+    s = n/2
+    while s > 0:
+        rx = (x & s) > 0
+        ry = (y & s) > 0
+        rx = 1 if rx else 0
+        ry = 1 if ry else 0
+        d += s * s * ((3 * rx) ^ ry)
+        x,y = rot(s,x,y,rx,ry)
+        s /= 2
+    return d
+    
+def checkFunction(size): # check the xy2d function        
     coords = []
     side = 2**size
     hilbert(0.0, 0.0, float(side), 0.0, 0.0, float(side), float(size), coords)
